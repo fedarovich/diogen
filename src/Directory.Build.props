@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>Enable</Nullable>
+    <LangVersion>Latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>

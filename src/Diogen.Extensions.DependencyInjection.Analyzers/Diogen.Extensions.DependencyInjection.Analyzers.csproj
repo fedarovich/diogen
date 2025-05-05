@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Copyright>© Pavel Fedarovich, 2025</Copyright>
+    <PackageProjectUrl>https://github.com/fedarovich/diogen</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/fedarovich/diogen.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>dependency inject; source generators</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <LangVersion>LatestMajor</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Diogen.Analyzers.Common\Diogen.Analyzers.Common.csproj"
+                      ReferenceOutputAssembly="True" OutputItemType="Analyzer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
+  </ItemGroup>
+
+</Project>
