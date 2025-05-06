@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Diogen.Generators;
 using Microsoft.CodeAnalysis.CSharp;
+using System.Linq;
 
 namespace Diogen.Analyzers.Common.Generators.AggregatedServices;
 
@@ -37,10 +38,14 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                     .Select(GetDependencyInfo)
                     .OrderBy(p => p.Optional);
 
+                var typeParameters = @interface
+                    .TypeParameters
+                    .Select(tp => new TypeParameter(tp.Name, GetTypeConstraints(tp)));
 
                 return new AggregatedServiceInfo(
                     @interface.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                     @interface.Name,
+                    new EquatableImmutableArray<TypeParameter>(typeParameters),
                     new EquatableImmutableArray<DependencyInfo>(properties),
                     options);
             });
@@ -65,7 +70,11 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                 bool isClass = options.Kind == GeneratedTypeKind.Class;
 
                 var className = info.InterfaceName[1..];
-                builder.AppendLine($"{options.Visibility.ToCSharpString()}{(options.IsSealed ? "sealed " : "")}partial {(isClass ? "class" : "record")} {className}(");
+                builder.Append($"{options.Visibility.ToCSharpString()}{(options.IsSealed ? "sealed " : "")}partial {(isClass ? "class" : "record")} {className}");
+
+                AppendTypeParameters(info, builder);
+
+                builder.AppendLine("(");
 
                 using (builder.Indent())
                 {
@@ -89,6 +98,20 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                     builder.Append('.');
                 }
                 builder.Append(info.InterfaceName);
+                AppendTypeParameters(info, builder);
+
+                foreach (var tp in info.TypeParameters)
+                {
+                    if (tp.Constraints is not [])
+                    {
+                        builder.AppendLine();
+                        using (builder.Indent())
+                        {
+                            builder.Append($"where {tp.Name} : ");
+                            builder.AppendJoin(", ", tp.Constraints);
+                        }
+                    }
+                }
 
                 if (isClass)
                 {
@@ -113,6 +136,55 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
 
                 ctx.AddSource("Dependencies.cs", builder.ToString());
             });
+    }
+
+    private static void AppendTypeParameters(AggregatedServiceInfo info, IndentedStringBuilder builder)
+    {
+        if (info.TypeParameters is not [])
+        {
+            builder.Append("<");
+            builder.AppendJoin(", ", info.TypeParameters.Select(tp => tp.Name));
+            builder.Append(">");
+        }
+    }
+
+    protected virtual EquatableImmutableArray<string> GetTypeConstraints(ITypeParameterSymbol tp)
+    {
+        bool hasTypeKindConstraint = tp.HasReferenceTypeConstraint | tp.HasValueTypeConstraint |
+                                     tp.HasUnmanagedTypeConstraint | tp.HasNotNullConstraint;
+        var count = (hasTypeKindConstraint ? 1 : 0) + tp.ConstraintTypes.Length + (tp.HasConstructorConstraint ? 1 : 0);
+        if (count == 0)
+            return default;
+
+        var constraints = new List<string>(count);
+        if (hasTypeKindConstraint)
+        {
+            if (tp.HasReferenceTypeConstraint)
+            {
+                constraints.Add("class");
+            }
+            else if (tp.HasValueTypeConstraint)
+            {
+                constraints.Add("struct");
+            }
+            else if (tp.HasNotNullConstraint)
+            {
+                constraints.Add("notnull");
+            }
+            else if (tp.HasUnmanagedTypeConstraint)
+            {
+                constraints.Add("unmanaged");
+            }
+        }
+
+        constraints.AddRange(tp.ConstraintTypes.Select(type => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
+
+        if (tp.HasConstructorConstraint)
+        {
+            constraints.Add("new()");
+        }
+
+        return constraints.ToImmutableArray();
     }
 
     protected virtual DependencyInfo GetDependencyInfo(IPropertySymbol p)

@@ -23,7 +23,7 @@ public readonly struct EquatableImmutableArray<T>(ImmutableArray<T> items, IEqua
     {
     }
 
-    public ImmutableArray<T> Items { get; } = items;
+    public ImmutableArray<T> Items => items.IsDefault ? ImmutableArray<T>.Empty : items; 
     
     public IEqualityComparer<T> ItemComparer => _itemComparer ?? EqualityComparer<T>.Default;
 
@@ -41,7 +41,7 @@ public readonly struct EquatableImmutableArray<T>(ImmutableArray<T> items, IEqua
 
     public int Length => Items.Length;
 
-    public int Count => Items.Length;
+    public int Count => Length;
 
     public bool Equals(EquatableImmutableArray<T> other)
     {
@@ -74,4 +74,5 @@ public readonly struct EquatableImmutableArray<T>(ImmutableArray<T> items, IEqua
         return !left.Equals(right);
     }
 
+    public static implicit operator EquatableImmutableArray<T>(ImmutableArray<T> array) => new(array);
 }

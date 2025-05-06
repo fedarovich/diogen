@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Diagnostics.CodeAnalysis;
 using Diogen.Analyzers.Common;
 using Diogen.Generators;
 using VerifyCS = Diogen.Extensions.DependencyInjection.Analyzers.Tests.Verifiers.CSharpSourceGeneratorVerifier<
@@ -223,6 +222,120 @@ public class AggregatedServicesGeneratorTests
                 public global::Test.Diogen.Generators.AggregatedServices.IOptionalService? Optional { get; } = optional;
             }
             
+            """;
+
+        await VerifyCS.VerifySourcesGeneratorAsync(sourceCode, generatedCode, "Dependencies.cs");
+    }
+
+    [Test]
+    public async Task TopLevelGenericInterfaceWithNullable_GeneratesTopLevelRecord()
+    {
+        var sourceCode =
+            """
+            #nullable enable
+
+            using System;
+            using Diogen.Generators;            
+            using Diogen.Extensions.DependencyInjection.Generators;
+            
+            namespace Test.Diogen.Generators.AggregatedServices;
+            
+            public interface INonGenericService { }
+            
+            public interface ISimpleGenericService<out T> { }
+            
+            public interface IConstrainedGenericService<out T> where T : class, IDisposable, new() { }
+            
+            public interface IConstrainedGenericService2<T> where T : struct { }
+            
+            [AggregatedServices]
+            public interface IDependencies<T1, T2, T3> where T2 : class, IDisposable, new() where T3 : struct
+            {
+                INonGenericService NonGeneric { get; }
+                
+                ISimpleGenericService<T1> SimpleGeneric { get; }
+                
+                IConstrainedGenericService<T2> ConstrainedGeneric { get; }
+                
+                IConstrainedGenericService2<T3> ConstrainedGeneric2 { get; }
+            }
+            """;
+
+        var generatedCode =
+            """
+            #nullable enable
+
+            namespace Test.Diogen.Generators.AggregatedServices;
+
+            public partial record Dependencies<T1, T2, T3>(
+                global::Test.Diogen.Generators.AggregatedServices.INonGenericService NonGeneric,
+                global::Test.Diogen.Generators.AggregatedServices.ISimpleGenericService<T1> SimpleGeneric,
+                global::Test.Diogen.Generators.AggregatedServices.IConstrainedGenericService<T2> ConstrainedGeneric,
+                global::Test.Diogen.Generators.AggregatedServices.IConstrainedGenericService2<T3> ConstrainedGeneric2
+            ) : global::Test.Diogen.Generators.AggregatedServices.IDependencies<T1, T2, T3>
+                where T2 : class, global::System.IDisposable, new()
+                where T3 : struct;
+
+            """;
+
+        await VerifyCS.VerifySourcesGeneratorAsync(sourceCode, generatedCode, "Dependencies.cs");
+    }
+
+    [Test]
+    public async Task TopLevelGenericInterfaceWithNullable_GeneratesTopLevelClass()
+    {
+        var sourceCode =
+            """
+            #nullable enable
+
+            using System;
+            using Diogen.Generators;            
+            using Diogen.Extensions.DependencyInjection.Generators;
+            
+            namespace Test.Diogen.Generators.AggregatedServices;
+            
+            public interface INonGenericService { }
+            
+            public interface ISimpleGenericService<out T> { }
+            
+            public interface IConstrainedGenericService<out T> where T : class, IDisposable, new() { }
+            
+            public interface IConstrainedGenericService2<T> where T : struct { }
+            
+            [AggregatedServices(Kind = GeneratedTypeKind.Class)]
+            public interface IDependencies<T1, T2, T3> where T2 : class, IDisposable, new() where T3 : struct
+            {
+                INonGenericService NonGeneric { get; }
+                
+                ISimpleGenericService<T1> SimpleGeneric { get; }
+                
+                IConstrainedGenericService<T2> ConstrainedGeneric { get; }
+                
+                IConstrainedGenericService2<T3> ConstrainedGeneric2 { get; }
+            }
+            """;
+
+        var generatedCode =
+            """
+            #nullable enable
+
+            namespace Test.Diogen.Generators.AggregatedServices;
+
+            public partial class Dependencies<T1, T2, T3>(
+                global::Test.Diogen.Generators.AggregatedServices.INonGenericService nonGeneric,
+                global::Test.Diogen.Generators.AggregatedServices.ISimpleGenericService<T1> simpleGeneric,
+                global::Test.Diogen.Generators.AggregatedServices.IConstrainedGenericService<T2> constrainedGeneric,
+                global::Test.Diogen.Generators.AggregatedServices.IConstrainedGenericService2<T3> constrainedGeneric2
+            ) : global::Test.Diogen.Generators.AggregatedServices.IDependencies<T1, T2, T3>
+                where T2 : class, global::System.IDisposable, new()
+                where T3 : struct
+            {
+                public global::Test.Diogen.Generators.AggregatedServices.INonGenericService NonGeneric { get; } = nonGeneric;
+                public global::Test.Diogen.Generators.AggregatedServices.ISimpleGenericService<T1> SimpleGeneric { get; } = simpleGeneric;
+                public global::Test.Diogen.Generators.AggregatedServices.IConstrainedGenericService<T2> ConstrainedGeneric { get; } = constrainedGeneric;
+                public global::Test.Diogen.Generators.AggregatedServices.IConstrainedGenericService2<T3> ConstrainedGeneric2 { get; } = constrainedGeneric2;
+            }
+
             """;
 
         await VerifyCS.VerifySourcesGeneratorAsync(sourceCode, generatedCode, "Dependencies.cs");
