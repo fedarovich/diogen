@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Linq;
+using System.Text;
 using Diogen.Generators;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -32,22 +33,12 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                     attribute.IsSealed() ?? false,
                     attribute.GetKind() ?? GeneratedTypeKind.Record);
 
-                var properties = @interface
-                    .GetMembers()
-                    .OfType<IPropertySymbol>()
-                    .Where(p => p is { IsReadOnly: true, IsAbstract: true, IsStatic: false, DeclaredAccessibility: Accessibility.Public })
-                    .Select(GetDependencyInfo)
-                    .OrderBy(p => p.Optional);
-
-                var typeParameters = @interface
-                    .TypeParameters
-                    .Select(tp => new TypeParameter(tp.Name, GetTypeConstraints(tp)));
-
                 return new AggregatedServiceInfo(
                     @interface.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                     @interface.Name,
-                    new EquatableImmutableArray<TypeParameter>(typeParameters),
-                    new EquatableImmutableArray<DependencyInfo>(properties),
+                    GetContainingTypes(@interface),
+                    GetTypeParameters(@interface),
+                    GetDependencies(@interface),
                     options);
             });
 
@@ -62,8 +53,17 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
 
                 if (hasNamespace)
                 {
-                    builder.AppendLine($"namespace {info.Namespace.AsSpan(8)};"); // remove the global:: prefix
+                    builder.AppendLine($"namespace {info.Namespace.AsSpan(8)};"); // removes the global:: prefix
                     builder.AppendLine();
+                }
+
+                foreach (var containingType in info.ContainingTypes)
+                {
+                    builder.Append($"partial {(containingType.IsRecord ? "record " : "")}{containingType.Kind.ToString().ToLowerInvariant()} {containingType.Name}");
+                    AppendTypeParameters(containingType.TypeParameters, builder);
+                    builder.AppendLine();
+                    builder.AppendLine("{");
+                    builder.IncrementIndent();
                 }
 
                 var options = info.Options;
@@ -73,7 +73,7 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                 var className = info.InterfaceName[1..];
                 builder.Append($"{options.Visibility.ToCSharpString()}{(options.IsSealed ? "sealed " : "")}partial {(isClass ? "class" : "record")} {className}");
 
-                AppendTypeParameters(info, builder);
+                AppendTypeParameters(info.TypeParameters, builder);
 
                 builder.AppendLine("(");
 
@@ -98,8 +98,15 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                     builder.Append(info.Namespace);
                     builder.Append('.');
                 }
+
+                foreach (var containingType in info.ContainingTypes)
+                {
+                    builder.Append(containingType.Name);
+                    AppendTypeParameters(containingType.TypeParameters, builder);
+                    builder.Append('.');
+                }
                 builder.Append(info.InterfaceName);
-                AppendTypeParameters(info, builder);
+                AppendTypeParameters(info.TypeParameters, builder);
 
                 foreach (var tp in info.TypeParameters)
                 {
@@ -135,16 +142,67 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                     builder.AppendLine(";");
                 }
 
-                ctx.AddSource("Dependencies.cs", builder.ToString());
+                while (builder.IndentCount > 0)
+                {
+                    builder.DecrementIndent();
+                    builder.AppendLine("}");
+                }
+
+                var sourceName = GetSourceName(info, className);
+                ctx.AddSource(sourceName, builder.ToString());
             });
     }
 
-    private static void AppendTypeParameters(AggregatedServiceInfo info, IndentedStringBuilder builder)
+    protected EquatableImmutableArray<TypeParameter> GetTypeParameters(INamedTypeSymbol @interface)
     {
-        if (info.TypeParameters is not [])
+        return @interface
+            .TypeParameters
+            .Select(tp => new TypeParameter(tp.Name, GetTypeConstraints(tp)))
+            .ToImmutableArray();
+    }
+
+    protected EquatableImmutableArray<DependencyInfo> GetDependencies(INamedTypeSymbol @interface)
+    {
+        var properties = @interface
+            .GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => p is { IsReadOnly: true, IsAbstract: true, IsStatic: false, DeclaredAccessibility: Accessibility.Public })
+            .Select(GetDependencyInfo)
+            .OrderBy(p => p.Optional);
+        return properties.ToImmutableArray();
+    }
+
+    protected EquatableImmutableArray<ContainingType> GetContainingTypes(INamedTypeSymbol @interface)
+    {
+        if (@interface.ContainingType is null)
+            return default;
+
+        var containingTypes = new List<ContainingType>(4);
+        var containingType = @interface.ContainingType;
+        do
+        {
+            var (kind, isRecord) = containingType.TypeKind switch
+            {
+                TypeKind.Class => (ContainingTypeKind.Class, containingType.IsRecord),
+                TypeKind.Struct => (ContainingTypeKind.Struct, containingType.IsRecord),
+                TypeKind.Interface => (ContainingTypeKind.Interface, false),
+                _ => (ContainingTypeKind.Unsupported, false)
+            };
+
+            containingTypes.Add(new ContainingType(kind, isRecord, containingType.Name, GetTypeParameters(containingType)));
+            containingType = containingType.ContainingType;
+        } while (containingType is not null);
+
+        containingTypes.Reverse();
+        return containingTypes.ToImmutableArray();
+    }
+
+    private static void AppendTypeParameters(EquatableImmutableArray<TypeParameter> typeParameters, IndentedStringBuilder builder)
+    {
+        if (typeParameters is not [])
         {
             builder.Append("<");
-            builder.AppendJoin(", ", info.TypeParameters.Select(tp => tp.Name));
+            builder.AppendJoin(", ", typeParameters.Select(tp => tp.Name));
             builder.Append(">");
         }
     }
@@ -269,4 +327,35 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
             _ => property.GetAttributes().Any(a =>
                 a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::Diogen.Generators.OptionalAttribute")
         };
+
+    protected virtual string GetSourceName(AggregatedServiceInfo info, string generatedTypeName)
+    {
+        var builder = new StringBuilder();
+        if (!string.IsNullOrEmpty(info.Namespace))
+        {
+            builder.Append(info.Namespace.Substring(8)); // Remove global:: prefix
+            builder.Append('.');
+        }
+
+        foreach (var containingType in info.ContainingTypes)
+        {
+            builder.Append(containingType.Name);
+            if (containingType.TypeParameters.Length > 0)
+            {
+                builder.Append("`");
+                builder.Append(containingType.TypeParameters.Length);
+            }
+
+            builder.Append(".");
+        }
+
+        builder.Append(generatedTypeName);
+        if (info.TypeParameters.Length > 0)
+        {
+            builder.Append("`");
+            builder.Append(info.TypeParameters.Length);
+        }
+        builder.Append(".cs");
+        return builder.ToString();
+    }
 }
