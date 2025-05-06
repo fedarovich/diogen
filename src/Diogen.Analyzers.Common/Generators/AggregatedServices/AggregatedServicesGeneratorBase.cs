@@ -1,9 +1,9 @@
 ﻿using System.Collections.Immutable;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Diogen.Generators;
-using Microsoft.CodeAnalysis.CSharp;
 using System.Linq;
+using Diogen.Generators;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Diogen.Analyzers.Common.Generators.AggregatedServices;
 
@@ -35,6 +35,7 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                 var properties = @interface
                     .GetMembers()
                     .OfType<IPropertySymbol>()
+                    .Where(p => p is { IsReadOnly: true, IsAbstract: true, IsStatic: false, DeclaredAccessibility: Accessibility.Public })
                     .Select(GetDependencyInfo)
                     .OrderBy(p => p.Optional);
 

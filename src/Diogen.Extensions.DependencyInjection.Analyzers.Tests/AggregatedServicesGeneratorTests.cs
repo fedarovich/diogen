@@ -340,4 +340,46 @@ public class AggregatedServicesGeneratorTests
 
         await VerifyCS.VerifySourcesGeneratorAsync(sourceCode, generatedCode, "Dependencies.cs");
     }
+
+    [Test]
+    public async Task DefaultInterfaceProperties_AreIgnored()
+    {
+        var sourceCode =
+            """
+            #nullable enable
+
+            using System;
+            using Diogen.Generators;            
+            using Diogen.Extensions.DependencyInjection.Generators;
+            
+            namespace Test.Diogen.Generators.AggregatedServices;
+            
+            public interface IService1 { }
+            public interface IService2 { }
+            public interface IService3 { }
+            
+            [AggregatedServices]
+            public interface IDependencies
+            {
+                IService1 Service1 { get; }
+                public IService2 Service2 { get; }
+                IService3 Service3 => throw new NotImplementedException();
+            }
+            """;
+
+        var generatedCode =
+            """
+            #nullable enable
+
+            namespace Test.Diogen.Generators.AggregatedServices;
+
+            public partial record Dependencies(
+                global::Test.Diogen.Generators.AggregatedServices.IService1 Service1,
+                global::Test.Diogen.Generators.AggregatedServices.IService2 Service2
+            ) : global::Test.Diogen.Generators.AggregatedServices.IDependencies;
+
+            """;
+
+        await VerifyCS.VerifySourcesGeneratorAsync(sourceCode, generatedCode, "Dependencies.cs");
+    }
 }
