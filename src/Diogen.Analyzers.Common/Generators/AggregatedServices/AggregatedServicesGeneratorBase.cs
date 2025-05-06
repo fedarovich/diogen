@@ -31,7 +31,8 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                 var options = new AggregatedServiceGenerationOptions(
                     attribute.GetAccessibility() ?? GeneratedTypeAccessibility.Public,
                     attribute.IsSealed() ?? false,
-                    attribute.GetKind() ?? GeneratedTypeKind.Record);
+                    attribute.GetKind() ?? GeneratedTypeKind.Record,
+                    attribute.GetLocation() ?? GeneratedTypeLocation.Sibling);
 
                 return new AggregatedServiceInfo(
                     @interface.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
@@ -57,10 +58,23 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                     builder.AppendLine();
                 }
 
-                foreach (var containingType in info.ContainingTypes)
+                if (info.Options.Location != GeneratedTypeLocation.TopLevel)
                 {
-                    builder.Append($"partial {(containingType.IsRecord ? "record " : "")}{containingType.Kind.ToString().ToLowerInvariant()} {containingType.Name}");
-                    AppendTypeParameters(containingType.TypeParameters, builder);
+                    foreach (var containingType in info.ContainingTypes)
+                    {
+                        builder.Append(
+                            $"partial {(containingType.IsRecord ? "record " : "")}{containingType.Kind.ToString().ToLowerInvariant()} {containingType.Name}");
+                        AppendTypeParameters(containingType.TypeParameters, builder);
+                        builder.AppendLine();
+                        builder.AppendLine("{");
+                        builder.IncrementIndent();
+                    }
+                }
+
+                if (info.Options.Location == GeneratedTypeLocation.Nested)
+                {
+                    builder.Append($"partial interface {info.InterfaceName}");
+                    AppendTypeParameters(info.TypeParameters, builder);
                     builder.AppendLine();
                     builder.AppendLine("{");
                     builder.IncrementIndent();
@@ -73,7 +87,10 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                 var className = info.InterfaceName[1..];
                 builder.Append($"{options.Accessibility.ToCSharpString()}{(options.IsSealed ? "sealed " : "")}partial {(isClass ? "class" : "record")} {className}");
 
-                AppendTypeParameters(info.TypeParameters, builder);
+                if (info.Options.Location != GeneratedTypeLocation.Nested)
+                {
+                    AppendTypeParameters(info.TypeParameters, builder);
+                }
 
                 builder.AppendLine("(");
 
@@ -337,20 +354,35 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
             builder.Append('.');
         }
 
-        foreach (var containingType in info.ContainingTypes)
+        if (info.Options.Location != GeneratedTypeLocation.TopLevel)
         {
-            builder.Append(containingType.Name);
-            if (containingType.TypeParameters.Length > 0)
+            foreach (var containingType in info.ContainingTypes)
+            {
+                builder.Append(containingType.Name);
+                if (containingType.TypeParameters.Length > 0)
+                {
+                    builder.Append("`");
+                    builder.Append(containingType.TypeParameters.Length);
+                }
+
+                builder.Append(".");
+            }
+        }
+
+        if (info.Options.Location == GeneratedTypeLocation.Nested)
+        {
+            builder.Append(info.InterfaceName);
+            if (info.TypeParameters.Length > 0)
             {
                 builder.Append("`");
-                builder.Append(containingType.TypeParameters.Length);
+                builder.Append(info.TypeParameters.Length);
             }
 
             builder.Append(".");
         }
 
         builder.Append(generatedTypeName);
-        if (info.TypeParameters.Length > 0)
+        if (info.Options.Location != GeneratedTypeLocation.Nested && info.TypeParameters.Length > 0)
         {
             builder.Append("`");
             builder.Append(info.TypeParameters.Length);

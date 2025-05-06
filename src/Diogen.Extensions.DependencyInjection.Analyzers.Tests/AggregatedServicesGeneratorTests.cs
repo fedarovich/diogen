@@ -384,7 +384,7 @@ public class AggregatedServicesGeneratorTests
     }
 
     [Test]
-    public async Task Nested_GeneratesNestedRecord()
+    public async Task NestedInterface_GeneratesSiblingRecord()
     {
         var sourceCode =
             """
@@ -448,5 +448,127 @@ public class AggregatedServicesGeneratorTests
             """;
 
         await VerifyCS.VerifySourcesGeneratorAsync(sourceCode, generatedCode, "Test.Diogen.Generators.AggregatedServices.Class.Record.Struct.RecordStruct`1.Interface.Dependencies.cs");
+    }
+
+    [Test]
+    public async Task NestedInterface_GeneratesTopLevelRecord()
+    {
+        var sourceCode =
+            """
+            #nullable enable
+
+            using System;
+            using Diogen.Generators;            
+            using Diogen.Extensions.DependencyInjection.Generators;
+            
+            namespace Test.Diogen.Generators.AggregatedServices;
+            
+            public interface IService { }
+            
+            public partial class Class
+            {
+                public partial record Record
+                {
+                    public partial struct Struct
+                    {
+                        public partial record struct RecordStruct
+                        {
+                            public partial interface Interface
+                            {
+                                [AggregatedServices(Location = GeneratedTypeLocation.TopLevel)]
+                                public interface IDependencies
+                                {
+                                    IService Service { get; }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            """;
+
+        var generatedCode =
+            """
+            #nullable enable
+
+            namespace Test.Diogen.Generators.AggregatedServices;
+
+            public partial record Dependencies(
+                global::Test.Diogen.Generators.AggregatedServices.IService Service
+            ) : global::Test.Diogen.Generators.AggregatedServices.Class.Record.Struct.RecordStruct.Interface.IDependencies;
+            
+            """;
+
+        await VerifyCS.VerifySourcesGeneratorAsync(sourceCode, generatedCode, "Test.Diogen.Generators.AggregatedServices.Dependencies.cs");
+    }
+
+    [Test]
+    public async Task NestedInterface_GeneratesNestedRecord()
+    {
+        var sourceCode =
+            """
+            #nullable enable
+
+            using System;
+            using Diogen.Generators;            
+            using Diogen.Extensions.DependencyInjection.Generators;
+            
+            namespace Test.Diogen.Generators.AggregatedServices;
+            
+            public interface IService { }
+            
+            public partial class Class
+            {
+                public partial record Record
+                {
+                    public partial struct Struct
+                    {
+                        public partial record struct RecordStruct
+                        {
+                            public partial interface Interface
+                            {
+                                [AggregatedServices(Location = GeneratedTypeLocation.Nested)]
+                                public partial interface IDependencies<T>
+                                {
+                                    IService Service { get; }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            """;
+
+        var generatedCode =
+            """
+            #nullable enable
+
+            namespace Test.Diogen.Generators.AggregatedServices;
+
+            partial class Class
+            {
+                partial record class Record
+                {
+                    partial struct Struct
+                    {
+                        partial record struct RecordStruct
+                        {
+                            partial interface Interface
+                            {
+                                partial interface IDependencies<T>
+                                {
+                                    public partial record Dependencies(
+                                        global::Test.Diogen.Generators.AggregatedServices.IService Service
+                                    ) : global::Test.Diogen.Generators.AggregatedServices.Class.Record.Struct.RecordStruct.Interface.IDependencies<T>;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            """;
+
+        await VerifyCS.VerifySourcesGeneratorAsync(sourceCode, generatedCode, "Test.Diogen.Generators.AggregatedServices.Class.Record.Struct.RecordStruct.Interface.IDependencies`1.Dependencies.cs");
     }
 }

@@ -5,7 +5,7 @@ namespace Diogen.Extensions.DependencyInjection.Generators;
 [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
 public sealed class AggregatedServicesAttribute : Attribute
 {
-    public GeneratedTypeLocation Location { get; set; } = GeneratedTypeLocation.SameLevel;
+    public GeneratedTypeLocation Location { get; set; } = GeneratedTypeLocation.Sibling;
 
     public GeneratedTypeAccessibility Accessibility { get; set; } = GeneratedTypeAccessibility.Public;
 
