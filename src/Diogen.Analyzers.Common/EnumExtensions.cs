@@ -4,17 +4,17 @@ namespace Diogen.Analyzers.Common;
 
 public static class EnumExtensions
 {
-    public static string ToCSharpString(this GeneratedTypeVisibility visibility) =>
-        visibility switch
+    public static string ToCSharpString(this GeneratedTypeAccessibility accessibility) =>
+        accessibility switch
         {
-            GeneratedTypeVisibility.File => "file ",
-            GeneratedTypeVisibility.Default => string.Empty,
-            GeneratedTypeVisibility.Private => "private ",
-            GeneratedTypeVisibility.PrivateProtected => "private protected ",
-            GeneratedTypeVisibility.Protected => "protected ",
-            GeneratedTypeVisibility.Internal => "internal ",
-            GeneratedTypeVisibility.ProtectedInternal => "protected internal ",
-            GeneratedTypeVisibility.Public => "public ",
-            _ => throw new ArgumentOutOfRangeException(nameof(visibility), visibility, null)
+            GeneratedTypeAccessibility.File => "file ",
+            GeneratedTypeAccessibility.Default => string.Empty,
+            GeneratedTypeAccessibility.Private => "private ",
+            GeneratedTypeAccessibility.PrivateProtected => "private protected ",
+            GeneratedTypeAccessibility.Protected => "protected ",
+            GeneratedTypeAccessibility.Internal => "internal ",
+            GeneratedTypeAccessibility.ProtectedInternal => "protected internal ",
+            GeneratedTypeAccessibility.Public => "public ",
+            _ => throw new ArgumentOutOfRangeException(nameof(accessibility), accessibility, null)
         };
 }

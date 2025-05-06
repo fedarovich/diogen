@@ -5,9 +5,9 @@ namespace Diogen.Analyzers.Common;
 
 internal static class AttributeDataExtensions
 {
-    public static GeneratedTypeVisibility? GetVisibility(this AttributeData attributeData)
+    public static GeneratedTypeAccessibility? GetAccessibility(this AttributeData attributeData)
     {
-        var kv = attributeData.NamedArguments.FirstOrDefault(a => a.Key == "Visibility");
+        var kv = attributeData.NamedArguments.FirstOrDefault(a => a.Key == "Accessibility");
         if (kv.Key is null)
             return null;
 
@@ -15,7 +15,7 @@ internal static class AttributeDataExtensions
         if (value is null)
             return null;
 
-        return (GeneratedTypeVisibility)value.Value;
+        return (GeneratedTypeAccessibility)value.Value;
     }
 
     public static GeneratedTypeKind? GetKind(this AttributeData attributeData)
@@ -38,5 +38,18 @@ internal static class AttributeDataExtensions
             return null;
 
         return kv.Value.Value is bool boolValue ? boolValue : null;
+    }
+
+    public static GeneratedTypeLocation? GetLocation(this AttributeData attributeData)
+    {
+        var kv = attributeData.NamedArguments.FirstOrDefault(a => a.Key == "Location");
+        if (kv.Key is null)
+            return null;
+
+        var value = kv.Value.Value as int?;
+        if (value is null)
+            return null;
+
+        return (GeneratedTypeLocation)value.Value;
     }
 }

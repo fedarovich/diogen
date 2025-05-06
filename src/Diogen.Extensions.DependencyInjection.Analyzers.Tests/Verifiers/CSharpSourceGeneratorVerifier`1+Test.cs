@@ -26,7 +26,7 @@ public static partial class CSharpSourceGeneratorVerifier<TSourceGenerator>
                 .AddMetadataReferences(
                     projectId,
                     [
-                        CreateMetadataReference<GeneratedTypeVisibility>(),
+                        CreateMetadataReference<GeneratedTypeAccessibility>(),
                         CreateMetadataReference<AggregatedServicesAttribute>(),
                         CreateMetadataReference<FromKeyedServicesAttribute> ()
                     ]));

@@ -3,6 +3,6 @@
 public enum GeneratedTypeLocation
 {
     TopLevel,
-    SameLevel,
+    Sibling,
     Nested
 }

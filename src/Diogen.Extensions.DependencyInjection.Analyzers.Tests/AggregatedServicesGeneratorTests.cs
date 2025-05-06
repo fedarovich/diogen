@@ -3,7 +3,7 @@ using Diogen.Analyzers.Common;
 using Diogen.Generators;
 using VerifyCS = Diogen.Extensions.DependencyInjection.Analyzers.Tests.Verifiers.CSharpSourceGeneratorVerifier<
     Diogen.Extensions.DependencyInjection.Analyzers.Generators.AggregatedServices.AggregatedServicesGenerator>;
-using static Diogen.Generators.GeneratedTypeVisibility;
+using static Diogen.Generators.GeneratedTypeAccessibility;
 
 namespace Diogen.Extensions.DependencyInjection.Analyzers.Tests;
 
@@ -11,7 +11,7 @@ public class AggregatedServicesGeneratorTests
 {
     [Test]
     public async Task TopLevelInterfaceWithNullable_GeneratesTopLevelRecord(
-        [Values(Default, Public, Internal, GeneratedTypeVisibility.File)] GeneratedTypeVisibility visibility,
+        [Values(Default, Public, Internal, GeneratedTypeAccessibility.File)] GeneratedTypeAccessibility accessibility,
         [Values(false, true)] bool isSealed)
     {
         var sourceCode =
@@ -36,7 +36,7 @@ public class AggregatedServicesGeneratorTests
             }
             
             [AggregatedServices(
-                Visibility = GeneratedTypeVisibility.{{visibility}},
+                Accessibility = GeneratedTypeAccessibility.{{accessibility}},
                 IsSealed = {{isSealed.ToString().ToLowerInvariant()}}
             )]
             public interface IDependencies
@@ -63,7 +63,7 @@ public class AggregatedServicesGeneratorTests
             
             namespace Test.Diogen.Generators.AggregatedServices;
             
-            {{visibility.ToCSharpString()}}{{(isSealed ? "sealed " : "")}}partial record Dependencies(
+            {{accessibility.ToCSharpString()}}{{(isSealed ? "sealed " : "")}}partial record Dependencies(
                 global::Test.Diogen.Generators.AggregatedServices.IRequiredService Required,
                 [global::Microsoft.Extensions.DependencyInjection.FromKeyedServicesAttribute("string-key")] global::Test.Diogen.Generators.AggregatedServices.IKeyedService KeyedWithStringKey,
                 [global::Microsoft.Extensions.DependencyInjection.FromKeyedServicesAttribute(42)] global::Test.Diogen.Generators.AggregatedServices.IKeyedService KeyedWithIntKey,
@@ -80,7 +80,7 @@ public class AggregatedServicesGeneratorTests
 
     [Test]
     public async Task TopLevelInterfaceWithoutNullable_GeneratesTopLevelRecord(
-        [Values(Default, Public, Internal, GeneratedTypeVisibility.File)] GeneratedTypeVisibility visibility,
+        [Values(Default, Public, Internal, GeneratedTypeAccessibility.File)] GeneratedTypeAccessibility accessibility,
         [Values(false, true)] bool isSealed)
     {
         var sourceCode =
@@ -105,7 +105,7 @@ public class AggregatedServicesGeneratorTests
             }
             
             [AggregatedServices(
-                Visibility = GeneratedTypeVisibility.{{visibility}},
+                Accessibility = GeneratedTypeAccessibility.{{accessibility}},
                 IsSealed = {{isSealed.ToString().ToLowerInvariant()}}
             )]
             public interface IDependencies
@@ -133,7 +133,7 @@ public class AggregatedServicesGeneratorTests
             
             namespace Test.Diogen.Generators.AggregatedServices;
             
-            {{visibility.ToCSharpString()}}{{(isSealed ? "sealed " : "")}}partial record Dependencies(
+            {{accessibility.ToCSharpString()}}{{(isSealed ? "sealed " : "")}}partial record Dependencies(
                 global::Test.Diogen.Generators.AggregatedServices.IRequiredService Required,
                 [global::Microsoft.Extensions.DependencyInjection.FromKeyedServicesAttribute("string-key")] global::Test.Diogen.Generators.AggregatedServices.IKeyedService KeyedWithStringKey,
                 [global::Microsoft.Extensions.DependencyInjection.FromKeyedServicesAttribute(42)] global::Test.Diogen.Generators.AggregatedServices.IKeyedService KeyedWithIntKey,
@@ -150,7 +150,7 @@ public class AggregatedServicesGeneratorTests
 
     [Test]
     public async Task TopLevelInterfaceWithNullable_GeneratesTopLevelClass(
-        [Values(Default, Public, Internal, GeneratedTypeVisibility.File)] GeneratedTypeVisibility visibility,
+        [Values(Default, Public, Internal, GeneratedTypeAccessibility.File)] GeneratedTypeAccessibility accessibility,
         [Values(false, true)] bool isSealed)
     {
         var sourceCode =
@@ -175,7 +175,7 @@ public class AggregatedServicesGeneratorTests
             }
             
             [AggregatedServices(
-                Visibility = GeneratedTypeVisibility.{{visibility}},
+                Accessibility = GeneratedTypeAccessibility.{{accessibility}},
                 IsSealed = {{isSealed.ToString().ToLowerInvariant()}},
                 Kind = GeneratedTypeKind.Class
             )]
@@ -203,7 +203,7 @@ public class AggregatedServicesGeneratorTests
             
             namespace Test.Diogen.Generators.AggregatedServices;
             
-            {{visibility.ToCSharpString()}}{{(isSealed ? "sealed " : "")}}partial class Dependencies(
+            {{accessibility.ToCSharpString()}}{{(isSealed ? "sealed " : "")}}partial class Dependencies(
                 global::Test.Diogen.Generators.AggregatedServices.IRequiredService required,
                 [global::Microsoft.Extensions.DependencyInjection.FromKeyedServicesAttribute("string-key")] global::Test.Diogen.Generators.AggregatedServices.IKeyedService keyedWithStringKey,
                 [global::Microsoft.Extensions.DependencyInjection.FromKeyedServicesAttribute(42)] global::Test.Diogen.Generators.AggregatedServices.IKeyedService keyedWithIntKey,

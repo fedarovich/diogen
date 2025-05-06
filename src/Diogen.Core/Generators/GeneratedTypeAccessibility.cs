@@ -1,6 +1,6 @@
 ﻿namespace Diogen.Generators;
 
-public enum GeneratedTypeVisibility
+public enum GeneratedTypeAccessibility
 {
     File = -1,
 
