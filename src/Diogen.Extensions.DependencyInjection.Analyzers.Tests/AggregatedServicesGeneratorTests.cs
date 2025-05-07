@@ -571,4 +571,41 @@ public class AggregatedServicesGeneratorTests
 
         await VerifyCS.VerifySourcesGeneratorAsync(sourceCode, generatedCode, "Test.Diogen.Generators.AggregatedServices.Class.Record.Struct.RecordStruct.Interface.IDependencies`1.Dependencies.cs");
     }
+
+    [Test]
+    public async Task TopLevelInterfaceWithNameProperty_GeneratesTopLevelRecordWithCustomName()
+    {
+        var sourceCode =
+            """
+            #nullable enable
+
+            using System;
+            using Diogen.Generators;            
+            using Diogen.Extensions.DependencyInjection.Generators;
+
+            namespace Test.Diogen.Generators.AggregatedServices;
+
+            public interface IService { }
+
+            [AggregatedServices(Name = "MyCustomDependencies")]
+            public interface IDependencies
+            {
+                IService Service { get; }
+            }
+            """;
+
+        var generatedCode =
+            """
+            #nullable enable
+
+            namespace Test.Diogen.Generators.AggregatedServices;
+
+            public partial record MyCustomDependencies(
+                global::Test.Diogen.Generators.AggregatedServices.IService Service
+            ) : global::Test.Diogen.Generators.AggregatedServices.IDependencies;
+
+            """;
+
+        await VerifyCS.VerifySourcesGeneratorAsync(sourceCode, generatedCode, "Test.Diogen.Generators.AggregatedServices.MyCustomDependencies.cs");
+    }
 }

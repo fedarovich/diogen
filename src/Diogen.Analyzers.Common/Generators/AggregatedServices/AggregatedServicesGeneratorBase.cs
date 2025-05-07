@@ -29,6 +29,7 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
 
                 var attribute = attributeContext.Attributes[0];
                 var options = new AggregatedServiceGenerationOptions(
+                    attribute.GetName(),
                     attribute.GetAccessibility() ?? GeneratedTypeAccessibility.Public,
                     attribute.IsSealed() ?? false,
                     attribute.GetKind() ?? GeneratedTypeKind.Record,
@@ -84,7 +85,7 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
 
                 bool isClass = options.Kind == GeneratedTypeKind.Class;
 
-                var className = info.InterfaceName[1..];
+                var className = string.IsNullOrWhiteSpace(options.CustomName) ? info.InterfaceName[1..] : options.CustomName!.Trim();
                 builder.Append($"{options.Accessibility.ToCSharpString()}{(options.IsSealed ? "sealed " : "")}partial {(isClass ? "class" : "record")} {className}");
 
                 if (info.Options.Location != GeneratedTypeLocation.Nested)

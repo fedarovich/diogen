@@ -12,4 +12,6 @@ public sealed class AggregatedServicesAttribute : Attribute
     public GeneratedTypeKind Kind { get; set; } = GeneratedTypeKind.Record;
 
     public bool IsSealed { get; set; }
+
+    public string? Name { get; set; }
 }

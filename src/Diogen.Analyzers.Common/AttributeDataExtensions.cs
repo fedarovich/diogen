@@ -5,6 +5,15 @@ namespace Diogen.Analyzers.Common;
 
 internal static class AttributeDataExtensions
 {
+    public static string? GetName(this AttributeData attributeData)
+    {
+        var kv = attributeData.NamedArguments.FirstOrDefault(a => a.Key == "Name");
+        if (kv.Key is null)
+            return null;
+
+        return kv.Value.Value as string;
+    }
+
     public static GeneratedTypeAccessibility? GetAccessibility(this AttributeData attributeData)
     {
         var kv = attributeData.NamedArguments.FirstOrDefault(a => a.Key == "Accessibility");
