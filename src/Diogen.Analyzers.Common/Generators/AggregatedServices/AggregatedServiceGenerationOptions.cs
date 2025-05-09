@@ -8,4 +8,4 @@ public record struct AggregatedServiceGenerationOptions(
     bool IsSealed,
     GeneratedTypeKind Kind,
     GeneratedTypeLocation Location
-);
+) : IGenerationOptions;

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using System.Linq;
 using System.Text;
 using Diogen.Generators;
 using Microsoft.CodeAnalysis;
@@ -10,9 +9,15 @@ namespace Diogen.Analyzers.Common.Generators.AggregatedServices;
 
 public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
 {
+    private static readonly Version FallbackVersion = new(1, 0, 0, 0);
+
+    private Version? _version;
+
     protected abstract string AggregatedServicesAttributeType { get; }
 
     protected abstract void AppendKeyAttribute(IndentedStringBuilder builder, string keyExpression);
+
+    protected virtual Version Version => LazyInitializer.EnsureInitialized(ref _version, () => GetType().Assembly.GetName().Version) ?? FallbackVersion;
 
     public virtual ImmutableArray<string> KeyAttributes => ImmutableArray.Create("global::Diogen.Generators.KeyedAttribute");
 
@@ -48,52 +53,32 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
             (ctx, info) =>
             {
                 var builder = new IndentedStringBuilder();
-                builder.AppendLine("#nullable enable");
-                builder.AppendLine();
 
-                bool hasNamespace = !string.IsNullOrEmpty(info.Namespace);
+                builder.AppendCommonHeader();
 
-                if (hasNamespace)
-                {
-                    builder.AppendLine($"namespace {info.Namespace.AsSpan(8)};"); // removes the global:: prefix
-                    builder.AppendLine();
-                }
+                builder.AppendNamespace(info.Namespace);
 
                 if (info.Options.Location != GeneratedTypeLocation.TopLevel)
                 {
                     foreach (var containingType in info.ContainingTypes)
                     {
-                        builder.Append(
-                            $"partial {(containingType.IsRecord ? "record " : "")}{containingType.Kind.ToString().ToLowerInvariant()} {containingType.Name}");
-                        AppendTypeParameters(containingType.TypeParameters, builder);
-                        builder.AppendLine();
-                        builder.AppendLine("{");
-                        builder.IncrementIndent();
+                        builder.AppendContainingTypeHeader(containingType);
                     }
                 }
 
                 if (info.Options.Location == GeneratedTypeLocation.Nested)
                 {
-                    builder.Append($"partial interface {info.InterfaceName}");
-                    AppendTypeParameters(info.TypeParameters, builder);
-                    builder.AppendLine();
-                    builder.AppendLine("{");
-                    builder.IncrementIndent();
+                    builder.AppendContainingInterfaceHeader(info.InterfaceName, info.TypeParameters);
                 }
 
                 var options = info.Options;
-
                 bool isClass = options.Kind == GeneratedTypeKind.Class;
-
                 var className = string.IsNullOrWhiteSpace(options.CustomName) ? info.InterfaceName[1..] : options.CustomName!.Trim();
-                builder.Append($"{options.Accessibility.ToCSharpString()}{(options.IsSealed ? "sealed " : "")}partial {(isClass ? "class" : "record")} {className}");
 
-                if (info.Options.Location != GeneratedTypeLocation.Nested)
-                {
-                    AppendTypeParameters(info.TypeParameters, builder);
-                }
-
-                builder.AppendLine("(");
+                builder
+                    .AppendGeneratedCodeAttribute(GetType().FullName!, Version)
+                    .AppendGeneratedClassHeader(className, info.TypeParameters, options)
+                    .AppendLine("(");
 
                 using (builder.Indent())
                 {
@@ -110,34 +95,9 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                     }
                 }
 
-                builder.Append(") : ");
-                if (!string.IsNullOrEmpty(info.Namespace))
-                {
-                    builder.Append(info.Namespace);
-                    builder.Append('.');
-                }
-
-                foreach (var containingType in info.ContainingTypes)
-                {
-                    builder.Append(containingType.Name);
-                    AppendTypeParameters(containingType.TypeParameters, builder);
-                    builder.Append('.');
-                }
-                builder.Append(info.InterfaceName);
-                AppendTypeParameters(info.TypeParameters, builder);
-
-                foreach (var tp in info.TypeParameters)
-                {
-                    if (tp.Constraints is not [])
-                    {
-                        builder.AppendLine();
-                        using (builder.Indent())
-                        {
-                            builder.Append($"where {tp.Name} : ");
-                            builder.AppendJoin(", ", tp.Constraints);
-                        }
-                    }
-                }
+                builder
+                    .Append(") : ")
+                    .AppendImplementedInterfaceNameAndConstraints(info.Namespace, info.InterfaceName, info.TypeParameters, info.ContainingTypes);
 
                 if (isClass)
                 {
@@ -160,16 +120,14 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
                     builder.AppendLine(";");
                 }
 
-                while (builder.IndentCount > 0)
-                {
-                    builder.DecrementIndent();
-                    builder.AppendLine("}");
-                }
+                builder.CloseAllScopes();
 
                 var sourceName = GetSourceName(info, className);
                 ctx.AddSource(sourceName, builder.ToString());
             });
     }
+
+    
 
     protected EquatableImmutableArray<TypeParameter> GetTypeParameters(INamedTypeSymbol @interface)
     {
@@ -214,17 +172,7 @@ public abstract class AggregatedServicesGeneratorBase : IIncrementalGenerator
         containingTypes.Reverse();
         return containingTypes.ToImmutableArray();
     }
-
-    private static void AppendTypeParameters(EquatableImmutableArray<TypeParameter> typeParameters, IndentedStringBuilder builder)
-    {
-        if (typeParameters is not [])
-        {
-            builder.Append("<");
-            builder.AppendJoin(", ", typeParameters.Select(tp => tp.Name));
-            builder.Append(">");
-        }
-    }
-
+    
     protected virtual EquatableImmutableArray<string> GetTypeConstraints(ITypeParameterSymbol tp)
     {
         bool hasTypeKindConstraint = tp.HasReferenceTypeConstraint | tp.HasValueTypeConstraint |
